@@ -8,6 +8,13 @@ const STORE_NAMES = {
 let db;
 let loggedIn = false; // Simple login state
 
+// Adição ao script.js para registrar e autenticar usuários
+const USUARIOS_KEY = 'usuariosLocal'; // MOVIDO PARA O ESCOPO GLOBAL
+// Default admin credentials (for demonstration purposes)
+const ADMIN_USER = 'admin'; // MOVIDO PARA O ESCOPO GLOBAL
+const ADMIN_PASS = 'admin'; // MOVIDO PARA O ESCOPO GLOBAL
+
+
 // Inicialização Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCujfgOIDmwZAAZyLsny2myY3vlBOzJjKQ",
