@@ -9,10 +9,9 @@ let db;
 let loggedIn = false; // Simple login state
 
 // Adição ao script.js para registrar e autenticar usuários
-const USUARIOS_KEY = 'usuariosLocal'; // MOVIDO PARA O ESCOPO GLOBAL
-// Default admin credentials (for demonstration purposes)
-const ADMIN_USER = 'admin'; // MOVIDO PARA O ESCOPO GLOBAL
-const ADMIN_PASS = 'admin'; // MOVIDO PARA O ESCOPO GLOBAL
+const USUARIOS_KEY = 'usuariosLocal'; // Garanta que esta linha esteja apenas aqui
+const ADMIN_USER = 'admin'; // Garanta que esta linha esteja apenas aqui
+const ADMIN_PASS = 'admin'; // Garanta que esta linha esteja apenas aqui
 
 
 // Inicialização Firebase
@@ -65,9 +64,6 @@ document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key === '1') abrirLogin();
 });
 
-// Default admin credentials (for demonstration purposes)
-const ADMIN_USER = 'admin';
-const ADMIN_PASS = 'admin';
 
 // Mapeamento de dias da semana para evitar inconsistências
 const DAY_MAP_PT = {
