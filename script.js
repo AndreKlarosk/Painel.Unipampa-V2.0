@@ -8,13 +8,7 @@ const STORE_NAMES = {
 let db;
 let loggedIn = false; // Simple login state
 
-// Adição ao script.js para registrar e autenticar usuários
-const USUARIOS_KEY = 'usuariosLocal'; // Garanta que esta linha esteja apenas aqui
-const ADMIN_USER = 'admin'; // Garanta que esta linha esteja apenas aqui
-const ADMIN_PASS = 'admin'; // Garanta que esta linha esteja apenas aqui
-
-
-// Inicialização Firebase
+  // Inicialização Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCujfgOIDmwZAAZyLsny2myY3vlBOzJjKQ",
     authDomain: "painel-unipampa-v1-2.firebaseapp.com",
@@ -23,47 +17,46 @@ const firebaseConfig = {
     messagingSenderId: "992016858356",
     appId: "1:992016858356:web:b4c30228e6a01dffc632a1",
     measurementId: "G-EPF9D1G2Y9"
-};
-
-const app = firebase.initializeApp(firebaseConfig);
-// Inicialização do Firestore
-const dbFirestore = firebase.firestore();
-const auth = firebase.auth();
-
-// Firestore Collections References
-const classesCollection = dbFirestore.collection(STORE_NAMES.CLASSES);
-const eventsCollection = dbFirestore.collection(STORE_NAMES.EVENTS);
-
-function abrirLogin() {
+  };
+  
+  const app = firebase.initializeApp(firebaseConfig);
+  // Inicialização do Firestore
+  const dbFirestore = firebase.firestore();
+  const auth = firebase.auth();
+  
+  function abrirLogin() {
     document.getElementById('loginModal').classList.add('is-active');
-}
-
-function fecharLogin() {
+  }
+  
+  function fecharLogin() {
     document.getElementById('loginModal').classList.remove('is-active');
-}
-
-function fazerLogin() {
+  }
+  
+  function fazerLogin() {
     const user = document.getElementById('login-user').value.trim();
     const pass = document.getElementById('login-pass').value.trim();
-
+  
     auth.signInWithEmailAndPassword(user, pass)
-        .then((userCredential) => {
-            loggedIn = true;
-            fecharLogin();
-            document.getElementById('admin-panel-page').classList.add('is-active');
-            document.getElementById('dashboard-view').classList.remove('is-active');
-            renderAdminTable();
-        })
-        .catch((error) => {
-            alert('Erro no login: ' + error.message);
-        });
-}
-
-// Atalho Ctrl + 1 para abrir modal
-document.addEventListener('keydown', function (e) {
+      .then((userCredential) => {
+        loggedIn = true;
+        fecharLogin();
+        document.getElementById('admin-panel-page').classList.add('is-active');
+        document.getElementById('dashboard-view').classList.remove('is-active');
+        renderAdminTable();
+      })
+      .catch((error) => {
+        alert('Erro no login: ' + error.message);
+      });
+  }
+  
+  // Atalho Ctrl + 1 para abrir modal
+  document.addEventListener('keydown', function (e) {
     if (e.ctrlKey && e.key === '1') abrirLogin();
-});
-
+  });
+  
+// Default admin credentials (for demonstration purposes)
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'admin';
 
 // Mapeamento de dias da semana para evitar inconsistências
 const DAY_MAP_PT = {
@@ -133,8 +126,7 @@ function openDB() {
 
             // Create or upgrade classes store
             if (!db.objectStoreNames.contains(STORE_NAMES.CLASSES)) {
-                // IMPORTANT: Removed autoIncrement as Firestore will provide the ID
-                const classStore = db.createObjectStore(STORE_NAMES.CLASSES, { keyPath: 'id' });
+                const classStore = db.createObjectStore(STORE_NAMES.CLASSES, { keyPath: 'id', autoIncrement: true });
                 classStore.createIndex('diaSemana', 'diaSemana', { unique: false });
                 classStore.createIndex('horario1', 'horario1', { unique: false });
                 classStore.createIndex('turno', 'turno', { unique: false });
@@ -147,8 +139,7 @@ function openDB() {
 
             // Create or upgrade events store
             if (!db.objectStoreNames.contains(STORE_NAMES.EVENTS)) {
-                // IMPORTANT: Removed autoIncrement as Firestore will provide the ID
-                const eventStore = db.createObjectStore(STORE_NAMES.EVENTS, { keyPath: 'id' });
+                const eventStore = db.createObjectStore(STORE_NAMES.EVENTS, { keyPath: 'id', autoIncrement: true });
                 eventStore.createIndex('data', 'data', { unique: false });
                 eventStore.createIndex('horarioInicio', 'horarioInicio', { unique: false });
                 eventStore.createIndex('turno', 'turno', { unique: false });
@@ -235,47 +226,32 @@ function showMessageBox(message, type = 'info', callback = null, isConfirm = fal
 
 
 /**
- * Adds a new item (class or event) to IndexedDB and Firestore.
+ * Adds a new item (class or event) to IndexedDB.
  * @param {object} itemData The data of the item to add.
  * @param {string} storeName The name of the object store ('classes' or 'events').
  */
 async function addItem(itemData, storeName) {
     try {
-        let firestoreCollection;
-        if (storeName === STORE_NAMES.CLASSES) {
-            firestoreCollection = classesCollection;
-        } else if (storeName === STORE_NAMES.EVENTS) {
-            firestoreCollection = eventsCollection;
-        } else {
-            throw new Error("Invalid storeName provided to addItem.");
-        }
-
-        // Add to Firestore first to get the ID
-        const docRef = await firestoreCollection.add(itemData);
-        itemData.id = docRef.id; // Assign Firestore ID to itemData
-
         const dbInstance = await openDB();
         const transaction = dbInstance.transaction([storeName], 'readwrite');
         const objectStore = transaction.objectStore(storeName);
         const request = objectStore.add(itemData);
 
         request.onsuccess = () => {
-            console.log(`[addItem SUCCESS] Added ${storeName} item. ID: ${itemData.id}. Data:`, itemData);
+            console.log(`[addItem SUCCESS] Added ${storeName} item. ID: ${request.result}. Data:`, itemData);
             showMessageBox(`${storeName === STORE_NAMES.CLASSES ? 'Turma' : 'Evento'} salvo com sucesso!`, 'success', null, false).then(() => {
                 if (storeName === STORE_NAMES.CLASSES) resetClassForm(); else resetEventForm();
                 renderDashboardItems();
             });
         };
         request.onerror = (event) => {
-            console.error(`[addItem ERROR] Error adding ${storeName} item to IndexedDB:`, event.target.error, 'Item data:', itemData);
-            // Optionally, try to delete from Firestore if IndexedDB failed
-            firestoreCollection.doc(itemData.id).delete().catch(e => console.error("Error cleaning up Firestore after IndexedDB add fail:", e));
+            console.error(`[addItem ERROR] Error adding ${storeName} item:`, event.target.error, 'Item data:', itemData);
             showMessageBox(`Erro ao adicionar ${storeName === STORE_NAMES.CLASSES ? 'turma' : 'evento'}: ${event.target.error.message}`, 'error');
         };
     } catch (error) {
-        console.error('Error adding item to Firestore or IndexedDB:', error);
-        showMessageBox('Erro interno ao salvar no banco de dados.', 'error');
-    } finally {
+        console.error('Error opening database for adding item:', error);
+        showMessageBox('Erro interno ao acessar o banco de dados.', 'error');
+    } finally { // Ensure table re-render even on error to reflect state
         if (loggedIn) {
             renderAdminTable(storeName);
         }
@@ -283,120 +259,60 @@ async function addItem(itemData, storeName) {
 }
 
 /**
- * Retrieves all items from a given store, preferring Firestore and synchronizing with IndexedDB.
+ * Retrieves all items from a given IndexedDB store.
  * @param {string} storeName The name of the object store ('classes' or 'events').
  * @returns {Promise<Array<object>>} A promise that resolves with an array of item objects.
  */
 async function getItems(storeName) {
     try {
-        let firestoreCollection;
-        if (storeName === STORE_NAMES.CLASSES) {
-            firestoreCollection = classesCollection;
-        } else if (storeName === STORE_NAMES.EVENTS) {
-            firestoreCollection = eventsCollection;
-        } else {
-            throw new Error("Invalid storeName provided to getItems.");
-        }
+        const dbInstance = await openDB();
+        const transaction = dbInstance.transaction([storeName], 'readonly');
+        const objectStore = transaction.objectStore(storeName);
+        const request = objectStore.getAll();
 
-        // Try to fetch from Firestore first
-        try {
-            const snapshot = await firestoreCollection.get();
-            const firestoreItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            console.log(`[getItems SUCCESS] Retrieved items from Firestore '${storeName}':`, firestoreItems);
-
-            // Synchronize with IndexedDB
-            const dbInstance = await openDB();
-            const transaction = dbInstance.transaction([storeName], 'readwrite');
-            const objectStore = transaction.objectStore(storeName);
-
-            // Clear existing IndexedDB data for full sync
-            await new Promise((resolve, reject) => {
-                const clearRequest = objectStore.clear();
-                clearRequest.onsuccess = () => resolve();
-                clearRequest.onerror = (e) => reject(e);
-            });
-
-            // Add all Firestore items to IndexedDB
-            for (const item of firestoreItems) {
-                await new Promise((resolve, reject) => {
-                    const addRequest = objectStore.add(item);
-                    addRequest.onsuccess = () => resolve();
-                    addRequest.onerror = (e) => {
-                        console.warn(`[getItems SYNC WARNING] Could not add item ${item.id} to IndexedDB (likely duplicate ID during partial sync, or schema mismatch):`, e);
-                        resolve(); // Resolve anyway to continue with other items
-                    };
-                });
-            }
-            console.log(`[getItems SYNC SUCCESS] IndexedDB '${storeName}' synchronized with Firestore.`);
-            return firestoreItems;
-
-        } catch (firestoreError) {
-            console.warn(`[getItems WARNING] Could not fetch from Firestore for '${storeName}', falling back to IndexedDB:`, firestoreError.message);
-            // Fallback to IndexedDB if Firestore fails (e.g., offline)
-            const dbInstance = await openDB();
-            const transaction = dbInstance.transaction([storeName], 'readonly');
-            const objectStore = transaction.objectStore(storeName);
-            const request = objectStore.getAll();
-
-            return new Promise((resolve, reject) => {
-                request.onsuccess = (event) => {
-                    console.log(`[getItems SUCCESS] Retrieved items from IndexedDB '${storeName}' (Firestore fallback):`, event.target.result);
-                    resolve(event.target.result);
-                };
-                request.onerror = (event) => {
-                    console.error(`[getItems ERROR] Error getting ${storeName} items from IndexedDB:`, event.target.error);
-                    reject(event.target.error);
-                };
-            });
-        }
+        return new Promise((resolve, reject) => {
+            request.onsuccess = (event) => {
+                console.log(`[getItems SUCCESS] Retrieved items from '${storeName}' store:`, event.target.result);
+                resolve(event.target.result);
+            };
+            request.onerror = (event) => {
+                console.error(`[getItems ERROR] Error getting ${storeName} items:`, event.target.error);
+                reject(event.target.error);
+            };
+        });
     } catch (error) {
-        console.error('Error in getItems (outer catch):', error);
-        showMessageBox('Erro interno ao acessar o banco de dados.', 'error');
+        console.error('Error opening database for getting items:', error);
         return [];
     }
 }
 
 /**
- * Updates an existing item in IndexedDB and Firestore.
+ * Updates an existing item in IndexedDB.
  * @param {object} itemData The updated item data, including its ID.
  * @param {string} storeName The name of the object store ('classes' or 'events').
  */
 async function updateItem(itemData, storeName) {
     try {
-        let firestoreCollection;
-        if (storeName === STORE_NAMES.CLASSES) {
-            firestoreCollection = classesCollection;
-        } else if (storeName === STORE_NAMES.EVENTS) {
-            firestoreCollection = eventsCollection;
-        } else {
-            throw new Error("Invalid storeName provided to updateItem.");
-        }
-
-        // Update in Firestore
-        await firestoreCollection.doc(itemData.id).set(itemData); // Use set to fully replace
-        console.log(`[updateItem SUCCESS] Updated ${storeName} item in Firestore. ID: ${itemData.id}. Data:`, itemData);
-
-        // Update in IndexedDB
         const dbInstance = await openDB();
         const transaction = dbInstance.transaction([storeName], 'readwrite');
         const objectStore = transaction.objectStore(storeName);
-        const request = objectStore.put(itemData);
+        const request = objectStore.put(itemData); // Use put for update
 
         request.onsuccess = () => {
-            console.log(`[updateItem SUCCESS] Updated ${storeName} item in IndexedDB. ID: ${itemData.id}. Data:`, itemData);
+            console.log(`[updateItem SUCCESS] Updated ${storeName} item. ID: ${itemData.id}. Data:`, itemData);
             showMessageBox(`${storeName === STORE_NAMES.CLASSES ? 'Turma' : 'Evento'} atualizado com sucesso!`, 'success', null, false).then(() => {
                 if (storeName === STORE_NAMES.CLASSES) resetClassForm(); else resetEventForm();
                 renderDashboardItems();
             });
         };
         request.onerror = (event) => {
-            console.error(`[updateItem ERROR] Error updating ${storeName} item in IndexedDB:`, event.target.error, 'Item data:', itemData);
+            console.error(`[updateItem ERROR] Error updating ${storeName} item:`, event.target.error, 'Item data:', itemData);
             showMessageBox(`Erro ao atualizar ${storeName === STORE_NAMES.CLASSES ? 'turma' : 'evento'}: ${event.target.error.message}`, 'error');
         };
     } catch (error) {
-        console.error('Error updating item in Firestore or IndexedDB:', error);
-        showMessageBox('Erro interno ao atualizar o banco de dados.', 'error');
-    } finally {
+        console.error('Error opening database for updating item:', error);
+        showMessageBox('Erro interno ao acessar o banco de dados.', 'error');
+    } finally { // Ensure table re-render even on error to reflect state
         if (loggedIn) {
             renderAdminTable(storeName);
         }
@@ -404,28 +320,14 @@ async function updateItem(itemData, storeName) {
 }
 
 /**
- * Deletes an item from IndexedDB and Firestore.
- * @param {string} id The ID of the item to delete (string, as Firestore IDs are strings).
+ * Deletes an item from IndexedDB.
+ * @param {number} id The ID of the item to delete.
  * @param {string} storeName The name of the object store ('classes' or 'events').
  */
 async function deleteItem(id, storeName) {
     const confirmed = await showMessageBox(`Tem certeza que deseja excluir este ${storeName === STORE_NAMES.CLASSES ? 'turma' : 'evento'}?`, 'warning', null, true);
     if (confirmed) {
         try {
-            let firestoreCollection;
-            if (storeName === STORE_NAMES.CLASSES) {
-                firestoreCollection = classesCollection;
-            } else if (storeName === STORE_NAMES.EVENTS) {
-                firestoreCollection = eventsCollection;
-            } else {
-                throw new Error("Invalid storeName provided to deleteItem.");
-            }
-
-            // Delete from Firestore
-            await firestoreCollection.doc(id).delete();
-            console.log(`[deleteItem SUCCESS] Deleted ${storeName} item from Firestore. ID: ${id}`);
-
-            // Delete from IndexedDB
             const dbInstance = await openDB();
             const transaction = dbInstance.transaction([storeName], 'readwrite');
             const objectStore = transaction.objectStore(storeName);
@@ -436,20 +338,18 @@ async function deleteItem(id, storeName) {
                     renderDashboardItems();
                     if (loggedIn) renderAdminTable(storeName);
                 });
-                console.log(`[deleteItem SUCCESS] Deleted ${storeName} item from IndexedDB. ID: ${id}`);
             };
             request.onerror = (event) => {
-                console.error(`Error deleting ${storeName} item from IndexedDB:`, event.target.error);
+                console.error(`Error deleting ${storeName} item:`, event.target.error);
                 showMessageBox(`Erro ao excluir ${storeName === STORE_NAMES.CLASSES ? 'turma' : 'evento'}: ${event.target.error.message}`, 'error');
             };
         }
         catch (error) {
-            console.error('Error deleting item from Firestore or IndexedDB:', error);
+            console.error('Error opening database for deleting item:', error);
             showMessageBox('Erro interno ao acessar o banco de dados.', 'error');
         }
     }
 }
-
 
 /**
  * Renders classes and events on the main dashboard, combined and sorted.
@@ -555,9 +455,9 @@ async function renderDashboardItems() {
         if (item.type === 'class') {
             const salaStatusClass = item.salaAberta ? 'open' : 'closed';
             const salaStatusText = item.salaAberta ? 'Aberta' : 'Fechada';
-
+            
             const classCard = document.createElement('div');
-            classCard.className = `dashboard-card`;
+            classCard.className = `dashboard-card`; 
             classCard.style.backgroundColor = randomColor;
             classCard.style.borderColor = randomColor;
             classCard.style.color = textColor;
@@ -743,8 +643,8 @@ async function renderAdminTable(activeTab = 'classes') {
                 <td>${item.turno ? item.turno.charAt(0).toUpperCase() + item.turno.slice(1) : ''}</td>
                 <td>${item.diaSemana ? item.diaSemana.charAt(0).toUpperCase() + item.diaSemana.slice(1) : ''}</td>
                 <td class="action-buttons">
-                    <button class="btn-action secondary-btn" onclick="editItem('${item.id}', '${STORE_NAMES.CLASSES}')">Editar</button>
-                    <button class="btn-action danger-btn" onclick="deleteItem('${item.id}', '${STORE_NAMES.CLASSES}')">Excluir</button>
+                    <button class="btn-action secondary-btn" onclick="editItem(${item.id}, '${STORE_NAMES.CLASSES}')">Editar</button>
+                    <button class="btn-action danger-btn" onclick="deleteItem(${item.id}, '${STORE_NAMES.CLASSES}')">Excluir</button>
                 </td>
             `;
         } else if (activeTab === STORE_NAMES.EVENTS) { // Explicitly check activeTab for rendering
@@ -760,8 +660,8 @@ async function renderAdminTable(activeTab = 'classes') {
                 <td>${displayTime}</td>
                 <td>${item.turno ? item.turno.charAt(0).toUpperCase() + item.turno.slice(1) : ''}</td>
                 <td class="action-buttons">
-                    <button class="btn-action secondary-btn" onclick="editItem('${item.id}', '${STORE_NAMES.EVENTS}')">Editar</button>
-                    <button class="btn-action danger-btn" onclick="deleteItem('${item.id}', '${STORE_NAMES.EVENTS}')">Excluir</button>
+                    <button class="btn-action secondary-btn" onclick="editItem(${item.id}, '${STORE_NAMES.EVENTS}')">Editar</button>
+                    <button class="btn-action danger-btn" onclick="deleteItem(${item.id}, '${STORE_NAMES.EVENTS}')">Excluir</button>
                 </td>
             `;
         }
@@ -797,19 +697,19 @@ function handleTableSort(sortKey, tableType) {
 
 /**
  * Fills the form with data of an item for editing in the admin page.
- * @param {string} id The ID of the item to edit (string, as Firestore IDs are strings).
+ * @param {number} id The ID of the item to edit.
  * @param {string} storeName The name of the object store ('classes' or 'events').
  */
 async function editItem(id, storeName) {
     const items = await getItems(storeName);
-    // const numericId = parseInt(id); // Removed, IDs are now strings from Firestore
+    const numericId = parseInt(id);
 
-    // if (isNaN(numericId)) { // Removed
-    //     showMessageBox('ID inválido para edição.', 'error');
-    //     return;
-    // }
+    if (isNaN(numericId)) {
+        showMessageBox('ID inválido para edição.', 'error');
+        return;
+    }
 
-    const itemToEdit = items.find(item => item.id === id); // Compare string IDs
+    const itemToEdit = items.find(item => item.id === numericId);
 
     if (!itemToEdit) {
         showMessageBox('Item não encontrado para edição.', 'error');
@@ -830,18 +730,6 @@ async function editItem(id, storeName) {
         document.getElementById('horario2').value = itemToEdit.horario2 || '';
         document.getElementById('turno').value = itemToEdit.turno || '';
         document.getElementById('prioridade').value = itemToEdit.prioridade || 'Média';
-        // Set toggle-sala-aberta state
-        const toggleButton = document.getElementById('toggle-sala-aberta');
-        if (itemToEdit.salaAberta) {
-            toggleButton.classList.remove('closed');
-            toggleButton.classList.add('open');
-            toggleButton.innerHTML = '<i class="fas fa-lock-open"></i> Sala Aberta';
-        } else {
-            toggleButton.classList.remove('open');
-            toggleButton.classList.add('closed');
-            toggleButton.innerHTML = '<i class="fas fa-lock"></i> Sala Fechada';
-        }
-
 
         // Alterna para aba e formulário de aulas
         document.getElementById('tab-classes').classList.add('active');
@@ -897,7 +785,7 @@ async function handleClassFormSubmission(event) {
         horario1: horario1,
         horario2: horario2,
         turno: document.getElementById('turno').value,
-        diaSemana: DAY_MAP_PT[document.getElementById('diaSemana').value.toLowerCase()] || document.getElementById('diaSemana').value, // Normalize day
+        diaSemana: DAY_MAP_PT[document.getElementById('diaSemana').value],
         prioridade: document.getElementById('prioridade').value,
         salaAberta: document.getElementById('toggle-sala-aberta').classList.contains('open')
     };
@@ -906,7 +794,7 @@ async function handleClassFormSubmission(event) {
 
     const editId = document.getElementById('editClassId').value;
     if (editId) {
-        classData.id = editId; // Use string ID from Firestore
+        classData.id = parseInt(editId);
         console.log('[handleClassFormSubmission] Updating existing class:', classData);
         await updateItem(classData, STORE_NAMES.CLASSES);
     } else {
@@ -933,7 +821,7 @@ async function handleEventFormSubmission(event) {
     const eventData = {
         titulo: document.getElementById('tituloEvento').value,
         local: document.getElementById('localEvento').value,
-        data: document.getElementById('dataEvento').value, // This is already in YYYY-MM-DD from input type="date"
+        data: document.getElementById('dataEvento').value,
         horarioInicio: horarioInicio,
         horarioFim: horarioFim,
         turno: document.getElementById('turnoEvento').value
@@ -943,7 +831,7 @@ async function handleEventFormSubmission(event) {
 
     const editId = document.getElementById('editEventId').value;
     if (editId) {
-        eventData.id = editId; // Use string ID from Firestore
+        eventData.id = parseInt(editId);
         console.log('[handleEventFormSubmission] Updating existing event:', eventData);
         await updateItem(eventData, STORE_NAMES.EVENTS);
     } else {
@@ -1159,120 +1047,79 @@ async function updateNextClassTimer() {
 
 
 /**
- * Exports data to a JSON file, now primarily from Firestore for consistency.
- * @param {string} storeName The name of the collection to export ('classes' or 'events').
+ * Exports data to a JSON file.
+ * @param {string} storeName The name of the object store to export ('classes' or 'events').
  */
 async function exportarDados(storeName) {
-    try {
-        let firestoreCollection;
-        if (storeName === STORE_NAMES.CLASSES) {
-            firestoreCollection = classesCollection;
-        } else if (storeName === STORE_NAMES.EVENTS) {
-            firestoreCollection = eventsCollection;
-        } else {
-            showMessageBox('Tipo de armazenamento inválido para exportação.', 'error');
-            return;
-        }
-
-        const snapshot = await firestoreCollection.get();
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        if (items.length === 0) {
-            showMessageBox(`Não há dados de ${storeName === STORE_NAMES.CLASSES ? 'aulas' : 'eventos'} para exportar em JSON.`, 'info');
-            return;
-        }
-
-        const dataStr = JSON.stringify(items, null, 2);
-        const blob = new Blob([dataStr], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${storeName}_unipampa.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showMessageBox(`${storeName === STORE_NAMES.CLASSES ? 'Aulas' : 'Eventos'} exportados para JSON com sucesso!`, 'success');
-        console.log(`[exportarDados] Data from ${storeName} exported.`);
-    } catch (error) {
-        console.error('Error exporting data from Firestore:', error);
-        showMessageBox('Erro ao exportar dados. Verifique a conexão com o Firebase.', 'error');
-    }
+    const items = await getItems(storeName);
+    const dataStr = JSON.stringify(items, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${storeName}_unipampa.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showMessageBox(`${storeName === STORE_NAMES.CLASSES ? 'Aulas' : 'Eventos'} exportados para JSON com sucesso!`, 'success');
+    console.log(`[exportarDados] Data from ${storeName} exported.`);
 }
 
 /**
- * Exports data to a CSV file, now primarily from Firestore for consistency.
- * @param {string} storeName The name of the collection to export ('classes' or 'events').
+ * Exports data to a CSV file.
+ * @param {string} storeName The name of the object store to export ('classes' or 'events').
  */
 async function exportarCSV(storeName) {
-    try {
-        let firestoreCollection;
-        if (storeName === STORE_NAMES.CLASSES) {
-            firestoreCollection = classesCollection;
-        } else if (storeName === STORE_NAMES.EVENTS) {
-            firestoreCollection = eventsCollection;
-        } else {
-            showMessageBox('Tipo de armazenamento inválido para exportação.', 'error');
-            return;
-        }
-
-        const snapshot = await firestoreCollection.get();
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        if (items.length === 0) {
-            showMessageBox(`Não há dados de ${storeName === STORE_NAMES.CLASSES ? 'aulas' : 'eventos'} para exportar em CSV.`, 'info');
-            return;
-        }
-
-        let headers;
-        if (storeName === STORE_NAMES.CLASSES) {
-            headers = ["id", "bloco", "andar", "sala", "disciplina", "turmas", "professor", "horario1", "horario2", "turno", "diaSemana", "salaAberta", "prioridade"];
-        } else { // Events
-            headers = ["id", "titulo", "local", "data", "horarioInicio", "horarioFim", "turno"];
-        }
-        let csvContent = headers.join(";") + "\n"; // Use semicolon as delimiter
-
-        items.forEach(row => {
-            const values = headers.map(header => {
-                let value = row[header] !== undefined ? row[header] : '';
-                if (typeof value === 'boolean') {
-                    value = value ? 'Sim' : 'Não';
-                }
-                // For event data, format date to standard ISO-MM-DD
-                if (header === 'data' && value) {
-                    // Assuming 'data' is already in YYYY-MM-DD from input, if not, adjust parsing
-                    value = value; // Keep as is if already YYYY-MM-DD
-                }
-                // Escape semicolons and newlines within the value if present, and wrap in quotes
-                if (typeof value === 'string' && (value.includes(';') || value.includes('\n') || value.includes('"'))) {
-                    value = `"${value.replace(/"/g, '""')}"`;
-                }
-                return value;
-            });
-            csvContent += values.join(";") + "\n";
-        });
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${storeName}_unipampa.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showMessageBox(`${storeName === STORE_NAMES.CLASSES ? 'Aulas' : 'Eventos'} exportados para CSV com sucesso!`, 'success');
-        console.log(`[exportarCSV] Data from ${storeName} exported as CSV.`);
-    } catch (error) {
-        console.error('Error exporting data to CSV from Firestore:', error);
-        showMessageBox('Erro ao exportar dados para CSV. Verifique a conexão com o Firebase.', 'error');
+    const items = await getItems(storeName);
+    if (items.length === 0) {
+        showMessageBox(`Não há dados de ${storeName === STORE_NAMES.CLASSES ? 'aulas' : 'eventos'} para exportar em CSV.`, 'info');
+        return;
     }
+
+    let headers;
+    if (storeName === STORE_NAMES.CLASSES) {
+        headers = ["id", "bloco", "andar", "sala", "disciplina", "turmas", "professor", "horario1", "horario2", "turno", "diaSemana", "salaAberta", "prioridade"];
+    } else { // Events
+        headers = ["id", "titulo", "local", "data", "horarioInicio", "horarioFim", "turno"];
+    }
+    let csvContent = headers.join(";") + "\n"; // Use semicolon as delimiter
+
+    items.forEach(row => {
+        const values = headers.map(header => {
+            let value = row[header] !== undefined ? row[header] : '';
+            if (typeof value === 'boolean') {
+                value = value ? 'Sim' : 'Não';
+            }
+            // For event data, format date to standard ISO-MM-DD
+            if (header === 'data' && value) {
+                value = new Date(value).toISOString().split('T')[0];
+            }
+            // Escape semicolons and newlines within the value if present, and wrap in quotes
+            if (typeof value === 'string' && (value.includes(';') || value.includes('\n') || value.includes('"'))) {
+                value = `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+        });
+        csvContent += values.join(";") + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${storeName}_unipampa.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showMessageBox(`${storeName === STORE_NAMES.CLASSES ? 'Aulas' : 'Eventos'} exportados para CSV com sucesso!`, 'success');
+    console.log(`[exportarCSV] Data from ${storeName} exported as CSV.`);
 }
 
 
 /**
- * Imports data from a JSON file, and synchronizes with Firestore and IndexedDB.
- * Existing items in Firestore with the same ID will be overwritten. New items will be added.
+ * Imports data from a JSON file.
  * @param {Event} event The file input change event.
  * @param {string} storeName The name of the object store to import into ('classes' or 'events').
  */
@@ -1287,15 +1134,9 @@ function importarDados(event, storeName) {
     reader.onload = async (e) => {
         try {
             const importedItems = JSON.parse(e.target.result);
-            let firestoreCollection;
-
-            if (storeName === STORE_NAMES.CLASSES) {
-                firestoreCollection = classesCollection;
-            } else if (storeName === STORE_NAMES.EVENTS) {
-                firestoreCollection = eventsCollection;
-            } else {
-                throw new Error("Invalid storeName provided for import.");
-            }
+            const dbInstance = await openDB();
+            const transaction = dbInstance.transaction([storeName], 'readwrite');
+            const objectStore = transaction.objectStore(storeName);
 
             let successCount = 0;
             let errorCount = 0;
@@ -1307,56 +1148,47 @@ function importarDados(event, storeName) {
                     if (storeName === STORE_NAMES.CLASSES && item.diaSemana) {
                         item.diaSemana = DAY_MAP_PT[item.diaSemana.toLowerCase()] || item.diaSemana;
                     }
-                    // For events, ensure date is in ISO-MM-DD format if needed
+                    // For events, ensure date is in ISO-MM-DD format if needed (it should be from date input)
                     if (storeName === STORE_NAMES.EVENTS && item.data) {
                         item.data = new Date(item.data).toISOString().split('T')[0];
                     }
 
-                    // Use Firestore's set with merge: true if ID exists, or add if no ID or new item
-                    // If 'id' is present, use it for set. Otherwise, let Firestore generate one via add.
-                    const itemToSave = { ...item }; // Clone to avoid modifying original item
-                    let docRef;
-                    if (itemToSave.id) {
-                        docRef = firestoreCollection.doc(itemToSave.id);
-                        await docRef.set(itemToSave, { merge: true }); // Overwrite existing fields, add new ones
-                    } else {
-                        docRef = await firestoreCollection.add(itemToSave); // Firestore generates ID
-                        itemToSave.id = docRef.id; // Assign the newly generated ID
-                    }
+                    const itemToAdd = { ...item };
+                    delete itemToAdd.id; // Ensure new ID is generated for new entries, avoiding conflicts
 
-                    // Now save to IndexedDB with the consistent ID
-                    const dbInstance = await openDB();
-                    const transaction = dbInstance.transaction([storeName], 'readwrite');
-                    const objectStore = transaction.objectStore(storeName);
-                    // Use put, so it adds if new or updates if exists (matching Firestore ID)
-                    const request = objectStore.put(itemToSave);
-
+                    const request = objectStore.add(itemToAdd);
                     await new Promise(resolve => {
                         request.onsuccess = () => {
                             successCount++;
                             resolve();
                         };
                         request.onerror = (event) => {
-                            console.error('Erro ao importar item para IndexedDB:', event.target.error, 'Item:', item);
+                            console.error('Erro ao importar item:', event.target.error, 'Item:', item);
                             errorCount++;
                             resolve(); // Resolve to continue with next item
                         };
                     });
                 } catch (itemError) {
-                    console.error('Erro ao processar item importado (loop Firestore/IndexedDB):', itemError, 'Item:', item);
+                    console.error('Erro ao processar item importado (loop):', itemError, 'Item:', item);
                     errorCount++;
                 }
             }
 
-            showMessageBox(`Importação concluída. Adicionados/Atualizados: ${successCount}. Erros: ${errorCount}.`, 'success').then(() => {
-                renderDashboardItems();
-                if (loggedIn) renderAdminTable(storeName);
-            });
-            console.log(`[importarDados] Import finished for ${storeName}. Successes: ${successCount}, Errors: ${errorCount}.`);
+            transaction.oncomplete = () => {
+                showMessageBox(`Importação concluída. Adicionados: ${successCount}. Erros: ${errorCount}.`, 'success').then(() => {
+                    renderDashboardItems();
+                    if (loggedIn) renderAdminTable(storeName);
+                });
+                console.log(`[importarDados] Import finished for ${storeName}. Successes: ${successCount}, Errors: ${errorCount}.`);
+            };
+            transaction.onerror = (event) => {
+                console.error('Transaction error during import:', event.target.error);
+                showMessageBox('Erro na transação de importação de dados.', 'error');
+            };
 
         } catch (error) {
-            console.error('Erro ao ler ou parsear arquivo JSON ou durante a importação:', error);
-            showMessageBox('Erro ao importar arquivo. Verifique se é um JSON válido e a conexão com o Firebase.', 'error');
+            console.error('Erro ao ler ou parsear arquivo JSON:', error);
+            showMessageBox('Erro ao importar arquivo. Verifique se é um JSON válido.', 'error');
         }
     };
     reader.readAsText(file);
@@ -1364,33 +1196,13 @@ function importarDados(event, storeName) {
 
 
 /**
- * Resets all data in a given IndexedDB store and Firestore collection.
- * @param {string} storeName The name of the store/collection to reset ('classes' or 'events').
+ * Resets all data in a given IndexedDB store.
+ * @param {string} storeName The name of the object store to reset ('classes' or 'events').
  */
 async function resetarDados(storeName) {
     const confirmed = await showMessageBox(`ATENÇÃO: Tem certeza que deseja APAGAR TODOS os dados de ${storeName === STORE_NAMES.CLASSES ? 'aulas' : 'eventos'}? Esta ação é irreversível.`, 'warning', null, true);
     if (confirmed) {
         try {
-            let firestoreCollection;
-            if (storeName === STORE_NAMES.CLASSES) {
-                firestoreCollection = classesCollection;
-            } else if (storeName === STORE_NAMES.EVENTS) {
-                firestoreCollection = eventsCollection;
-            } else {
-                showMessageBox('Tipo de armazenamento inválido para resetar.', 'error');
-                return;
-            }
-
-            // Delete all documents from Firestore collection
-            const snapshot = await firestoreCollection.get();
-            const batch = dbFirestore.batch();
-            snapshot.docs.forEach((doc) => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-            console.log(`[resetarDados SUCCESS] All data in Firestore collection '${storeName}' deleted.`);
-
-            // Clear data from IndexedDB store
             const dbInstance = await openDB();
             const transaction = dbInstance.transaction([storeName], 'readwrite');
             const objectStore = transaction.objectStore(storeName);
@@ -1401,15 +1213,15 @@ async function resetarDados(storeName) {
                     renderDashboardItems();
                     if (loggedIn) renderAdminTable(storeName);
                 });
-                console.log(`[resetarDados SUCCESS] All data in IndexedDB '${storeName}' cleared.`);
+                console.log(`[resetarDados] All data in ${storeName} cleared.`);
             };
             request.onerror = (event) => {
-                console.error('Error clearing data from IndexedDB:', event.target.error);
+                console.error('Error clearing data:', event.target.error);
                 showMessageBox(`Erro ao resetar dados de ${storeName === STORE_NAMES.CLASSES ? 'aulas' : 'eventos'}: ${event.target.error.message}`, 'error');
             };
         } catch (error) {
-            console.error('Error resetting data in Firestore or IndexedDB:', error);
-            showMessageBox('Erro interno ao acessar o banco de dados para resetar.', 'error');
+            console.error('Error opening database for clearing data:', error);
+            showMessageBox('Erro interno ao acessar o banco de dados.', 'error');
         }
     }
 }
